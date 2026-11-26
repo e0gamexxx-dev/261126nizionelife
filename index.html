@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>切り抜きまとめ</title>
+<style>
+:root{--bg:#eef2f7;--card:#fff;--ink:#1c2540;--sub:#5b6684;--line:#d5dce8;--acc:#0f766e;--acc-ink:#fff;--chip:#e3e9f3;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121826;--card:#1b2336;--ink:#e8ecf5;--sub:#9aa5c0;--line:#2c3650;--acc:#2dd4bf;--acc-ink:#06201d;--chip:#273148;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121826;--card:#1b2336;--ink:#e8ecf5;--sub:#9aa5c0;--line:#2c3650;--acc:#2dd4bf;--acc-ink:#06201d;--chip:#273148;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.6rem;margin:0 0 4px;letter-spacing:.02em}
+.lead{margin:0 0 20px;color:var(--sub);font-size:.9rem}
+#q{width:100%;padding:12px 14px;font-size:1rem;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+#q:focus-visible,.chip:focus-visible,.card:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px}
+.chip{border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:6px 12px;border-radius:999px;font-size:.85rem;cursor:pointer;font-family:inherit}
+.chip[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:700}
+.status{display:flex;justify-content:space-between;align-items:center;margin:10px 0 14px;font-size:.85rem;color:var(--sub);min-height:1.6em}
+#clear{border:0;background:none;color:var(--acc);cursor:pointer;font-size:.85rem;font-family:inherit;text-decoration:underline}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+@media (max-width:560px){.grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+@media (max-width:380px){.grid{grid-template-columns:1fr}}
+.card{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;color:inherit;text-decoration:none}
+.card:hover{border-color:var(--acc)}
+.thumb{aspect-ratio:16/9;display:grid;place-items:center;background:hsl(var(--h) 45% 38%);position:relative}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.thumb svg{position:relative;width:38px;height:38px;fill:#fff;opacity:.95;filter:drop-shadow(0 1px 4px rgba(0,0,0,.6))}
+.body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;flex:1}
+.title{font-size:.92rem;font-weight:700;margin:0;line-height:1.45}
+.who{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto}
+.who span{font-size:.75rem;background:var(--chip);color:var(--sub);padding:2px 8px;border-radius:999px}
+.who span.on{background:var(--acc);color:var(--acc-ink)}
+.empty{grid-column:1/-1;text-align:center;color:var(--sub);padding:40px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>切り抜きまとめ</h1>
+  <p class="lead">タイトルやライバー名で検索、ライバーをタップして絞り込めます。</p>
+  <input id="q" type="search" placeholder="タイトル・ライバー名で検索" aria-label="検索">
+  <div class="tags" id="tags" role="group" aria-label="ライバーで絞り込み"></div>
+  <div class="status"><span id="count"></span><button id="clear" hidden>絞り込みを解除</button></div>
+  <div class="grid" id="grid"></div>
+</div>
+<script>
+// ▼ 動画データ：1本ずつ追加します。url と livers だけでOK（title は省略するとYouTubeのタイトルを自動取得）
+const VIDEOS = [
+  {title:"（手書きタイトル例）これを書くとこちらが優先されます", url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーA","ライバーB"]},
+  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーA"]},
+  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーC"]},
+  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーB","ライバーC"]},
+  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーA","ライバーB","ライバーC"]},
+  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーD"]},
+  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーD","ライバーA"]},
+  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーB"]},
+  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーC","ライバーD"]},
+  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーA","ライバーD"]}
+];
+// ▲ ここまで
+
+const $=id=>document.getElementById(id);
+const norm=s=>s.toLowerCase().normalize("NFKC");
+const allLivers=[...new Set(VIDEOS.flatMap(v=>v.livers))];
+const selected=new Set();
+let query="";
+
+function shown(v){return v.title||v.fetched||"（タイトル取得中）"}
+async function fetchTitles(){
+  await Promise.all(VIDEOS.map(async v=>{
+    if(v.title)return;
+    try{
+      const r=await fetch("https://www.youtube.com/oembed?format=json&url="+encodeURIComponent(v.url));
+      if(!r.ok)throw 0;
+      v.fetched=(await r.json()).title;
+    }catch(e){v.fetched=v.url}
+  }));
+  render();
+}
+function vid(u){const m=u.match(/(?:youtu\.be\/|\/live\/|\/shorts\/|[?&]v=)([\w-]{11})/);return m?m[1]:null}
+function hue(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h}
+
+function renderTags(){
+  $("tags").innerHTML="";
+  allLivers.forEach(n=>{
+    const b=document.createElement("button");
+    b.className="chip";b.type="button";b.textContent=n;
+    b.setAttribute("aria-pressed",selected.has(n));
+    b.onclick=()=>{selected.has(n)?selected.delete(n):selected.add(n);update()};
+    $("tags").appendChild(b);
+  });
+}
+
+function render(){
+  const q=norm(query.trim());
+  const list=VIDEOS.filter(v=>{
+    const okTag=[...selected].every(n=>v.livers.includes(n));
+    const okQ=!q||norm(shown(v)+" "+v.livers.join(" ")).includes(q);
+    return okTag&&okQ;
+  });
+  $("count").textContent=list.length+"本の動画";
+  $("clear").hidden=!(selected.size||q);
+  const g=$("grid");g.innerHTML="";
+  if(!list.length){g.innerHTML='<div class="empty">該当する動画がありません。条件を変えてみてください。</div>';return}
+  list.forEach(v=>{
+    const a=document.createElement("a");
+    a.className="card";a.href=v.url;a.target="_blank";a.rel="noopener";
+    const who=v.livers.map(n=>'<span class="'+(selected.has(n)?"on":"")+'"></span>').join("");
+    a.innerHTML='<div class="thumb" style="--h:'+hue(v.url)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></div><div class="body"><h2 class="title"></h2><div class="who">'+who+'</div></div>';
+    a.querySelector(".title").textContent=shown(v);
+    a.querySelectorAll(".who span").forEach((s,i)=>s.textContent=v.livers[i]);
+    const id=vid(v.url);
+    if(id){const im=document.createElement("img");im.src="https://i.ytimg.com/vi/"+id+"/hqdefault.jpg";im.alt="";im.loading="lazy";im.onerror=()=>im.remove();a.querySelector(".thumb").prepend(im)}
+    g.appendChild(a);
+  });
+}
+
+function update(){renderTags();render()}
+$("q").addEventListener("input",e=>{query=e.target.value;render()});
+$("clear").onclick=()=>{selected.clear();query="";$("q").value="";update()};
+update();
+fetchTitles();
+</script>
+</body>
+</html>
