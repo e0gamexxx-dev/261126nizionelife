@@ -49,23 +49,23 @@ h1{font-size:1.6rem;margin:0 0 4px;letter-spacing:.02em}
 </div>
 <script>
 // ▼ 動画データ：1本ずつ追加します。url と livers だけでOK（title は省略するとYouTubeのタイトルを自動取得）
+// livers は出演ライバー名を書きます。例：livers:["ライバーA","ライバーB"]
 const VIDEOS = [
-  {title:"（手書きタイトル例）これを書くとこちらが優先されます", url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーA","ライバーB"]},
-  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーA"]},
-  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーC"]},
-  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーB","ライバーC"]},
-  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーA","ライバーB","ライバーC"]},
-  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーD"]},
-  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーD","ライバーA"]},
-  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーB"]},
-  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーC","ライバーD"]},
-  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=9L5_jIPPh8NkUsOi", livers:["ライバーA","ライバーD"]}
+  {url:"https://www.youtube.com/live/mG4G1nIWkQI?si=zPqXJAM-Y95Ybd9d", livers:[]},
+  {url:"https://www.youtube.com/live/aRQac4HHMXA?si=41qogSg1pM2srgQb", livers:[]},
+  {url:"https://www.youtube.com/live/wXlVIO7VW9w?si=JuaPTEl4_b_w1sQu", livers:[]},
+  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=8HGiveSRIL8Ra-JH", livers:[]},
+  {url:"https://www.youtube.com/live/QERAIQ8-edY?si=yq8b1eOmfyN2blMn", livers:[]},
+  {url:"https://www.youtube.com/live/UoeeCh3dteE?si=qDNY6Wr2OwdECGAj", livers:[]},
+  {url:"https://www.youtube.com/live/rxkz31dqZic?si=SV_ppe8jMkqqBGuO", livers:[]},
+  {url:"https://www.youtube.com/live/dwm640Qvsqg?si=dOaWzt4xGeVtfzg5", livers:[]},
+  {url:"https://www.youtube.com/live/zZDlnOuBukQ?si=s3X5G-M38N59Db8m", livers:[]}
 ];
 // ▲ ここまで
 
 const $=id=>document.getElementById(id);
 const norm=s=>s.toLowerCase().normalize("NFKC");
-const allLivers=[...new Set(VIDEOS.flatMap(v=>v.livers))];
+const allLivers=[...new Set(VIDEOS.flatMap(v=>v.livers).filter(Boolean))];
 const selected=new Set();
 let query="";
 
