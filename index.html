@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>261126 #にじONELIFEまとめ</title>
+<title>切り抜きまとめ</title>
 <style>
 :root{--bg:#eef2f7;--card:#fff;--ink:#1c2540;--sub:#5b6684;--line:#d5dce8;--acc:#0f766e;--acc-ink:#fff;--chip:#e3e9f3;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -40,7 +40,7 @@ h1{font-size:1.6rem;margin:0 0 4px;letter-spacing:.02em}
 </head>
 <body>
 <div class="wrap">
-  <h1>261126 #にじONELIFEまとめ</h1>
+  <h1>切り抜きまとめ</h1>
   <p class="lead">タイトルやライバー名で検索、ライバーをタップして絞り込めます。</p>
   <input id="q" type="search" placeholder="タイトル・ライバー名で検索" aria-label="検索">
   <div class="tags" id="tags" role="group" aria-label="ライバーで絞り込み"></div>
@@ -48,27 +48,56 @@ h1{font-size:1.6rem;margin:0 0 4px;letter-spacing:.02em}
   <div class="grid" id="grid"></div>
 </div>
 <script>
-// ▼ 動画データ：1本ずつ追加します。url と livers だけでOK（title は省略するとYouTubeのタイトルを自動取得）
-// livers は出演ライバー名を書きます。例：livers:["ライバーA","ライバーB"]
-const VIDEOS = [
-  {url:"https://www.youtube.com/live/mG4G1nIWkQI?si=zPqXJAM-Y95Ybd9d", livers:[]},
-  {url:"https://www.youtube.com/live/aRQac4HHMXA?si=41qogSg1pM2srgQb", livers:[]},
-  {url:"https://www.youtube.com/live/wXlVIO7VW9w?si=JuaPTEl4_b_w1sQu", livers:[]},
-  {url:"https://www.youtube.com/live/Hp8EmKhPKZ0?si=8HGiveSRIL8Ra-JH", livers:[]},
-  {url:"https://www.youtube.com/live/QERAIQ8-edY?si=yq8b1eOmfyN2blMn", livers:[]},
-  {url:"https://www.youtube.com/live/UoeeCh3dteE?si=qDNY6Wr2OwdECGAj", livers:[]},
-  {url:"https://www.youtube.com/live/rxkz31dqZic?si=SV_ppe8jMkqqBGuO", livers:[]},
-  {url:"https://www.youtube.com/live/dwm640Qvsqg?si=dOaWzt4xGeVtfzg5", livers:[]},
-  {url:"https://www.youtube.com/live/zZDlnOuBukQ?si=s3X5G-M38N59Db8m", livers:[]}
-];
+// ▼ 動画データはGoogleスプレッドシートから読み込みます（1行目：url, livers, 任意で title）
+// livers は複数ならカンマ区切り（例：ライバーA,ライバーB）。title が空ならYouTubeのタイトルを自動取得します。
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKx_6ZAtOwYtkBWlGMbhIRCu5Bi35dpH4OPcY7GfAECFJweC5SizgvByZmugx_rabikGBc0Oymc27O/pub?gid=0&single=true&output=csv";
+let VIDEOS = [];
 // ▲ ここまで
 
 const $=id=>document.getElementById(id);
 const norm=s=>s.toLowerCase().normalize("NFKC");
-const allLivers=[...new Set(VIDEOS.flatMap(v=>v.livers).filter(Boolean))];
+let allLivers=[];
 const selected=new Set();
 let query="";
 
+function parseCSV(t){
+  const rows=[];let row=[],f="",q=false;
+  t=t.replace(/^\uFEFF/,"");
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"')q=true;
+    else if(c===","){row.push(f);f=""}
+    else if(c==="\n"||c==="\r"){if(c==="\r"&&t[i+1]==="\n")i++;row.push(f);rows.push(row);row=[];f=""}
+    else f+=c;
+  }
+  if(f!==""||row.length){row.push(f);rows.push(row)}
+  return rows;
+}
+function parseSheet(t){
+  const rows=parseCSV(t);
+  const head=(rows.shift()||[]).map(h=>h.trim().toLowerCase());
+  const ix=n=>head.indexOf(n);
+  return rows.map(r=>({
+    url:(r[ix("url")]||"").trim(),
+    title:(r[ix("title")]||"").trim(),
+    livers:(r[ix("livers")]||"").split(/[,、，／\/]/).map(x=>x.trim()).filter(Boolean)
+  })).filter(v=>v.url);
+}
+async function init(){
+  $("grid").innerHTML='<div class="empty">読み込み中…</div>';
+  try{
+    const r=await fetch(SHEET_URL);
+    if(!r.ok)throw 0;
+    VIDEOS=parseSheet(await r.text());
+  }catch(e){
+    $("grid").innerHTML='<div class="empty">スプレッドシートを読み込めませんでした。時間をおいて開き直してください。</div>';
+    return;
+  }
+  allLivers=[...new Set(VIDEOS.flatMap(v=>v.livers))];
+  update();
+  fetchTitles();
+}
 function shown(v){return v.title||v.fetched||"（タイトル取得中）"}
 async function fetchTitles(){
   await Promise.all(VIDEOS.map(async v=>{
@@ -122,8 +151,41 @@ function render(){
 function update(){renderTags();render()}
 $("q").addEventListener("input",e=>{query=e.target.value;render()});
 $("clear").onclick=()=>{selected.clear();query="";$("q").value="";update()};
-update();
-fetchTitles();
+function parseCSV(t){
+  const rows=[];let row=[],f="",q=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c=='"')q=true;
+    else if(c==","){row.push(f);f=""}
+    else if(c=="\n"){row.push(f);rows.push(row);row=[];f=""}
+    else if(c!="\r")f+=c;
+  }
+  if(f!==""||row.length){row.push(f);rows.push(row)}
+  return rows;
+}
+async function load(){
+  $("count").textContent="読み込み中…";
+  try{
+    const r=await fetch(SHEET_URL+"&t="+Date.now());
+    if(!r.ok)throw 0;
+    const rows=parseCSV(await r.text());
+    const head=rows.shift().map(h=>h.trim().toLowerCase());
+    const iu=head.indexOf("url"),il=head.indexOf("livers"),it=head.indexOf("title");
+    VIDEOS=rows.filter(x=>x[iu]&&x[iu].trim()).map(x=>({
+      url:x[iu].trim(),
+      livers:(il>=0?(x[il]||""):"").split(/[,、，\/／]/).map(n=>n.trim()).filter(Boolean),
+      title:it>=0?(x[it]||"").trim():""
+    }));
+  }catch(e){
+    $("count").textContent="スプレッドシートを読み込めませんでした。";
+    return;
+  }
+  allLivers=[...new Set(VIDEOS.flatMap(v=>v.livers))];
+  update();
+  fetchTitles();
+}
+load();
 </script>
 </body>
 </html>
